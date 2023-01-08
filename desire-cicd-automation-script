@@ -1,0 +1,42 @@
+node {
+
+    stage("Git Clone"){
+        git credentialsId: 'GIT_HUB_CREDENTIALS', url: 'https://github.com/desirefikoue/spring-boot-mongo-docker.git'
+    }
+    stage('Maven Clean Build') {
+        def mavenHome = tool name: "Maven-3.8.6", type: "maven"
+        def mavenCMD = "${mavenHome}/bin/mvn"
+        sh "${mavenCMD} clean package"
+    }
+    stage('SonarQube Analysis') {
+        def mvnHome =  tool name: 'Maven-3.8.6', type: 'maven'
+        withSonarQubeEnv('desire') { 
+          sh "${mvnHome}/bin/mvn sonar:sonar"
+        }
+    }
+    stage("Build Docker Image"){
+        sh "docker -v"
+        sh "docker build -t king-httpd ."
+    }
+    stage("Docker Image list"){
+        
+        sh "docker images"
+        
+        sh "cat /etc/*release"
+        
+        sh "nproc"
+    }
+    stage("Docker Image Tag"){
+
+        sh "docker tag king-httpd desirefikoue/king-httpd:king-httpd" 
+        sh "date"
+    }
+    stage("Docker Login to Hub Docker"){
+        withCredentials([string(credentialsId: 'DOCKER_HUB_PASSWORD', variable: 'PASSWORD')]) {
+            sh 'docker login -u desirefikoue -p $PASSWORD'
+        }
+    }
+    stage("Docker Image Push"){
+        sh "docker push desirefikoue/king-httpd:king-httpd"
+    }
+}
